@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ordträning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --board:#E9EEEC; --panel:#F8FAF9; --ink:#1B2330; --muted:#5A6573; --line:#C9D3D0;
+  --accent:#1D5FBF; --led:#7A3FB3; --ledbg:#F0E4FB; --add:#1E8A5A;
+  --ok:#1E8A5A; --okbg:#E3F4EB; --warn:#9A5B00; --warnbg:#FFF1D6; --bad:#C8322B; --badbg:#FBE7E5;
+  --adv:#B07A00; --advbg:#FFF1C7; --field:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --board:#1A2126; --panel:#222B31; --ink:#EEF2F4; --muted:#A5B0BA; --line:#3A4750;
+    --accent:#78A9FF; --led:#C39BF0; --ledbg:#3B2A4D; --add:#5DD39E;
+    --ok:#5DD39E; --okbg:#173A2A; --warn:#F2C14E; --warnbg:#3F3313; --bad:#FF7B72; --badbg:#46201E;
+    --adv:#F2C14E; --advbg:#4A3C12; --field:#2E3A42;
+  }
+}
+:root[data-theme="dark"]{
+  --board:#1A2126; --panel:#222B31; --ink:#EEF2F4; --muted:#A5B0BA; --line:#3A4750;
+  --accent:#78A9FF; --led:#C39BF0; --ledbg:#3B2A4D; --add:#5DD39E;
+  --ok:#5DD39E; --okbg:#173A2A; --warn:#F2C14E; --warnbg:#3F3313; --bad:#FF7B72; --badbg:#46201E;
+  --adv:#F2C14E; --advbg:#4A3C12; --field:#2E3A42;
+}
+*{box-sizing:border-box}
+html{font-size:clamp(16px,1.2vw + 6px,25px)}
+body{margin:0;background:var(--board);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;line-height:1.45;min-height:100vh;display:flex;flex-direction:column}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,select:focus-visible,.card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+header{display:flex;align-items:center;gap:.6rem 1rem;padding:.6rem 1.2rem;border-bottom:2px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-size:1.05rem;margin:0;white-space:nowrap}
+nav.tabs{display:flex;gap:.3rem;flex-wrap:wrap;flex:1}
+nav.tabs button{border:0;background:transparent;padding:.35rem .7rem;border-radius:.4rem;font-size:.78rem;color:var(--muted)}
+nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--panel)}
+.tools{display:flex;gap:.3rem;flex-wrap:wrap}
+.iconbtn{border:2px solid var(--line);background:var(--panel);border-radius:.4rem;padding:.25rem .55rem;font-size:.72rem}
+.who{font-size:.7rem;color:var(--muted);white-space:nowrap}
+.sync{font-size:.65rem;color:var(--muted);margin-left:.3rem}
+.sync.err{color:var(--bad)}
+.iconbtn.sum{border-color:var(--add);color:var(--add);font-weight:700}
+
+.subnav{display:flex;gap:0;flex-wrap:wrap;margin:0 0 1rem;border:2px solid var(--line);border-radius:.5rem;overflow:hidden;width:max-content;max-width:100%;background:var(--panel)}
+.subnav button{border:0;background:transparent;padding:.35rem .85rem;font-size:.8rem;color:var(--muted);border-right:1px solid var(--line)}
+.subnav button:last-child{border-right:0}
+.subnav button[aria-pressed="true"]{background:var(--ledbg);color:var(--led);font-weight:700}
+.subnav .k{font-weight:700;margin-right:.3rem}
+
+main{flex:1;width:100%;max-width:1200px;margin:0 auto;padding:1.1rem 1.4rem 1rem}
+.instr{font-size:1rem;margin:0 0 .9rem;color:var(--muted)}
+.instr b{color:var(--ink)}
+
+/* ordruta */
+.bank{background:var(--panel);border:2px solid var(--line);border-radius:.6rem;padding:.55rem .7rem;margin-bottom:1rem}
+.bank summary{cursor:pointer;font-size:.75rem;color:var(--muted);list-style:none;display:flex;justify-content:space-between}
+.bank summary::-webkit-details-marker{display:none}
+.bank summary::after{content:"▾";font-size:.8rem}
+.bank:not([open]) summary::after{content:"▸"}
+.chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.45rem}
+.chip{border:1px solid var(--line);background:var(--board);border-radius:.35rem;padding:.1rem .55rem;font-size:.85rem}
+.chip.used{opacity:.4;text-decoration:line-through}
+.chip:hover{border-color:var(--led)}
+
+/* uppgift */
+.item{background:var(--panel);border:2px solid var(--line);border-radius:.7rem;padding:1.1rem 1.3rem 1.2rem}
+.item.done{border-color:var(--ok)}
+.itemhead{display:flex;align-items:baseline;gap:.9rem;margin-bottom:.6rem}
+.num{font-size:2.2rem;font-weight:700;line-height:1;min-width:1.4em;color:var(--muted)}
+.item.done .num{color:var(--ok)}
+.orig{font-size:1.2rem;color:var(--muted);margin:0}
+.arrow{font-size:.75rem;color:var(--muted);margin:.4rem 0 .2rem;text-transform:uppercase;letter-spacing:.06em}
+.sent{font-size:1.55rem;line-height:2.1;margin:0}
+.gap{display:inline-flex;align-items:baseline;gap:.1rem;vertical-align:baseline}
+.pre{font-weight:700;color:var(--led);font-style:italic}
+.gap input{width:min(11em,62vw);font-size:1.35rem;padding:.05rem .4rem;border:0;border-bottom:3px solid var(--led);background:var(--field);border-radius:.3rem .3rem 0 0;color:var(--ink)}
+.gap input:focus{outline:none;box-shadow:0 0 0 3px var(--ledbg)}
+.gap input.ok{border-color:var(--ok);background:var(--okbg);color:var(--ok);font-weight:700}
+.gap input.no{border-color:var(--bad);background:var(--badbg)}
+.gap input:disabled{opacity:1;-webkit-text-fill-color:currentColor}
+.tag{display:inline-block;font-size:.72rem;border:1px solid var(--line);border-radius:1rem;padding:.05rem .6rem;color:var(--muted);margin:0 0 .5rem}
+.tag b{color:var(--ink)}
+.pairrow{display:grid;grid-template-columns:1fr auto 1fr;gap:.8rem;align-items:center;font-size:1.55rem}
+.pairrow .lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block}
+.pairrow .mid{color:var(--muted)}
+
+.actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.1rem}
+.btn{border:2px solid var(--ink);background:var(--panel);border-radius:.45rem;padding:.35rem .9rem;font-size:.82rem;font-weight:700}
+.btn.primary{background:var(--ink);color:var(--panel)}
+.btn.quiet{border-color:var(--line);font-weight:400}
+.btn[hidden]{display:none}
+.feedback{margin-top:.9rem;padding:.55rem .85rem;border-radius:.45rem;font-size:.92rem;display:none}
+.feedback.show{display:block}
+.feedback.ok{background:var(--okbg);color:var(--ok)}
+.feedback.warn{background:var(--warnbg);color:var(--warn)}
+.feedback.info{background:var(--ledbg);color:var(--led)}
+
+/* flerval */
+.opts{display:flex;flex-direction:column;gap:.45rem;margin-top:.4rem}
+.opt{text-align:left;border:2px solid var(--line);background:var(--board);border-radius:.45rem;padding:.45rem .8rem;font-size:1.15rem}
+.opt .l{font-weight:700;margin-right:.5rem;color:var(--muted)}
+.opt.right{border-color:var(--ok);background:var(--okbg);color:var(--ok);font-weight:700}
+.opt.wrong{border-color:var(--bad);color:var(--bad);text-decoration:line-through}
+
+/* para ihop */
+.match{display:grid;gap:.5rem}
+.mrow{display:grid;grid-template-columns:minmax(10rem,1fr) minmax(12rem,1.4fr);gap:.6rem;align-items:center;font-size:1.1rem}
+.mrow select{width:100%;padding:.3rem .4rem;border:2px solid var(--line);border-radius:.4rem;background:var(--field);font-size:1rem}
+.mrow select.ok{border-color:var(--ok);background:var(--okbg)}
+.mrow select.no{border-color:var(--bad);background:var(--badbg)}
+
+/* ordlista */
+.abar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:.9rem}
+.toggle{display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(17rem,1fr));gap:.7rem}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:.6rem;padding:.75rem .9rem;display:flex;flex-direction:column;gap:.25rem}
+.card h3{margin:0;font-size:1.3rem}
+.card .gram{font-size:.75rem;color:var(--muted)}
+.card .pos{display:inline-block;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;border:1px solid var(--line);border-radius:.3rem;padding:0 .35rem;margin-left:.3rem;vertical-align:.15em}
+.card .exp{font-size:.92rem;margin-top:.2rem}
+.card .ex{font-size:.88rem;font-style:italic;color:var(--muted)}
+.card input{margin-top:.4rem;border:0;border-bottom:2px solid var(--line);background:transparent;padding:.2rem .1rem;font-size:.95rem}
+.card input:focus{outline:none;border-color:var(--led)}
+.card .reveal{display:none;border:1px dashed var(--line);background:transparent;border-radius:.4rem;padding:.4rem;font-size:.8rem;color:var(--muted);margin-top:.2rem}
+.hideexp .card .exp,.hideexp .card .ex{display:none}
+.hideexp .card .reveal{display:block}
+.hideexp .card.open .exp,.hideexp .card.open .ex{display:block}
+.hideexp .card.open .reveal{display:none}
+.big{max-width:46rem;margin:0 auto;text-align:center;padding:2rem 1.5rem}
+.big h3{font-size:3rem;margin:0}
+.big .gram{font-size:1rem}
+.big .exp{font-size:1.35rem;margin-top:1rem}
+.big .ex{font-size:1.2rem;margin-top:.4rem}
+.big input{text-align:center;font-size:1.1rem;max-width:22rem;align-self:center;width:100%}
+
+.lbl2{display:block;font-size:.8rem;color:var(--muted);margin-top:.8rem}
+.lbl2 input{display:block;width:100%;margin-top:.2rem;padding:.35rem .5rem;border:2px solid var(--line);border-radius:.4rem;background:var(--field);font-size:1rem}
+footer{display:flex;align-items:center;justify-content:center;gap:.8rem;padding:.7rem 1rem 1rem;flex-wrap:wrap}
+footer[hidden]{display:none}
+.navbtn{border:2px solid var(--ink);background:var(--panel);border-radius:50%;width:2.4rem;height:2.4rem;font-size:1.15rem;font-weight:700;display:grid;place-items:center}
+.navbtn:disabled{opacity:.3;cursor:default}
+.dots{display:flex;gap:.25rem;flex-wrap:wrap;justify-content:center;max-width:44rem}
+.dot{border:2px solid var(--line);background:var(--panel);border-radius:.3rem;min-width:1.75rem;height:1.75rem;font-size:.7rem;padding:0 .3rem}
+.dot[aria-current="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.dot.done{border-color:var(--ok)}
+.dot.done[aria-current="true"]{border-color:var(--ok)}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;z-index:50;padding:1rem}
+.modal[hidden]{display:none}
+.mbox{background:var(--panel);color:var(--ink);border-radius:.8rem;padding:1.2rem 1.4rem;max-width:48rem;width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 1rem 3rem rgba(0,0,0,.3)}
+.mhead{display:flex;justify-content:space-between;align-items:baseline;gap:1rem}
+.mbox h2{margin:0 0 .3rem;font-size:1.3rem}
+.mbox h3{font-size:.95rem;margin:1.2rem 0 .4rem}
+.mbox .lead{font-size:.82rem;color:var(--muted);margin:0}
+.prog{display:grid;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:.4rem}
+.prog div{border:1px solid var(--line);border-radius:.4rem;padding:.35rem .6rem;font-size:.8rem;display:flex;justify-content:space-between;gap:.5rem}
+.prog .bar{height:.35rem;background:var(--line);border-radius:.2rem;margin-top:.25rem;overflow:hidden}
+.prog .bar i{display:block;height:100%;background:var(--ok)}
+.pill{border:1px solid var(--line);background:var(--board);border-radius:1rem;padding:.1rem .65rem;font-size:.8rem;display:inline-block;margin:.12rem .2rem .12rem 0}
+.again{border:1px solid var(--line);border-radius:.45rem;padding:.45rem .7rem;margin:.35rem 0;font-size:.85rem}
+.again .top{display:flex;justify-content:space-between;gap:.5rem;align-items:center;font-weight:700;margin-bottom:.15rem;font-size:.75rem;color:var(--muted)}
+.again .mine{color:var(--bad)}
+.again .right b{color:var(--ok)}
+.go{border:1px solid var(--line);background:var(--panel);border-radius:.3rem;font-size:.72rem;padding:.05rem .45rem}
+.gl{display:grid;grid-template-columns:auto 1fr;gap:.15rem 1rem;font-size:.85rem}
+.gl b{font-weight:700}
+.empty{color:var(--muted);font-size:.85rem}
+
+@media (max-width:700px){
+  main{padding:.9rem .9rem}
+  header{padding:.5rem .8rem}
+  .sent{font-size:1.25rem;line-height:2}
+  .gap input{font-size:1.15rem}
+  .num{font-size:1.7rem}
+  .pairrow{grid-template-columns:1fr;font-size:1.25rem;gap:.3rem}
+  .pairrow .mid{display:none}
+  .mrow{grid-template-columns:1fr;gap:.2rem;padding-bottom:.4rem;border-bottom:1px solid var(--line)}
+  .big h3{font-size:2.2rem}
+  .subnav button{padding:.35rem .6rem}
+  header h1{font-size:.95rem;width:100%}
+  .iconbtn .t{display:none}
+  nav.tabs{flex:1 1 auto}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Ordträning</h1><span class="who" id="who"></span>
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+  <div class="tools">
+    <button class="iconbtn sum" id="sumBtn">📝<span class="t"> Min</span> sammanfattning</button>
+    <button class="iconbtn" id="clearBtn" title="Töm svaren i den här övningen">✕<span class="t"> Rensa övningen</span></button>
+    <button class="iconbtn" id="themeBtn" title="Ljust/mörkt">◐</button>
+    <button class="iconbtn" id="fsBtn" title="Helskärm (F)">⛶</button>
+  </div>
+</header>
+<main id="main"></main>
+<footer id="foot">
+  <button class="navbtn" id="prev" aria-label="Föregående">‹</button>
+  <div class="dots" id="dots"></div>
+  <button class="navbtn" id="next" aria-label="Nästa">›</button>
+</footer>
+
+<div class="modal" id="whoModal" hidden>
+  <div class="mbox" role="dialog" aria-modal="true" aria-labelledby="whoTitle" style="max-width:28rem">
+    <h2 id="whoTitle">Vem är du?</h2>
+    <p class="lead">Din lärare behöver veta vem som gör övningarna. Du behöver bara skriva det här en gång.</p>
+    <label class="lbl2">För- och efternamn<input id="whoName" autocomplete="name"></label>
+    <label class="lbl2">Klass<input id="whoClass" autocomplete="off"></label>
+    <div class="actions"><button class="btn primary" id="whoOk">Börja</button></div>
+  </div>
+</div>
+<div class="modal" id="sumModal" hidden>
+  <div class="mbox" role="dialog" aria-modal="true" aria-labelledby="sumTitle">
+    <div class="mhead"><h2 id="sumTitle">Min sammanfattning</h2><button class="btn quiet" id="sumClose">Stäng</button></div>
+    <p class="lead">Allt du gör i övningarna sparas också hos din lärare, så att hen kan se vad du har tränat på och hjälpa dig med det som är svårt.</p>
+    <div id="sumBody"></div>
+  </div>
+</div>
+
+<script>
+const SET = {id:"1-4", label:"1–4", title:"Ordträning 1–4"};
+// ---------- ORDLISTOR ----------
+// [ord, böjning, ordklass, förklaring, exempel, alla former (mellanslag)]
+const WORDS = {
+1: [
+ ["anledning","-en -ar","subst","Orsak; det som gör att något händer eller att man gör något.","Det finns ingen anledning att vara orolig.","anledning anledningen anledningar anledningarna"],
+ ["anmäla","-er -de -t","verb","1) Berätta för polisen eller en myndighet om ett brott eller ett problem. 2) anmäla sig = skriva upp sig för att vara med i något.","Grannen anmälde inbrottet direkt. Har du anmält dig till turneringen?","anmäla anmäler anmälde anmält anmäld anmälda anmäls anmäldes anmälts anmäl"],
+ ["avlägsen","-et -na","adj","Som ligger mycket långt bort.","De reste till en avlägsen ö i Stilla havet.","avlägsen avlägset avlägsna avlägsnare avlägsnast avlägsnaste"],
+ ["avstånd","-et -","subst","Hur långt det är mellan två platser eller saker.","Håll avstånd till bilen framför.","avstånd avståndet avstånden"],
+ ["bedöma","-er -de -t","verb","Avgöra hur bra, stort eller viktigt något är; värdera.","Läraren bedömer uppsatserna efter lovet.","bedöma bedömer bedömde bedömt bedömd bedömda bedöms bedömdes bedöm"],
+ ["beställa","-er -de -t","verb","Be om att få en vara eller en tjänst, till exempel mat, en biljett eller ett bord.","Vi beställde pizza till hela klassen.","beställa beställer beställde beställt beställd beställda beställs beställdes beställ"],
+ ["bidrag","-et -","subst","1) Pengar som man får som hjälp, till exempel från staten. 2) Något man ger för att hjälpa till.","Studenter kan få bidrag till hyran. Tack för ditt bidrag till diskussionen!","bidrag bidraget bidragen"],
+ ["däremot","","adv","Används för att visa en motsats: å andra sidan.","Jag gillar inte te. Kaffe dricker jag däremot gärna.","däremot"],
+ ["efterfrågan","","subst","Hur mycket människor vill köpa av en vara eller en tjänst.","Efterfrågan på elbilar ökar varje år.","efterfrågan"],
+ ["erfarenhet","-en -er","subst","Kunskap som man får genom att göra eller uppleva saker.","Jag har ingen erfarenhet av att köra bil i snö.","erfarenhet erfarenheten erfarenheter erfarenheterna"],
+ ["framställa","-er -de -t","verb","1) Tillverka, producera. 2) Beskriva eller visa något på ett visst sätt.","Företaget framställer mediciner. I filmen framställs poliserna som hjältar.","framställa framställer framställde framställt framställd framställda framställs framställdes framställ"],
+ ["förbereda","-bereder -beredde -berett","verb","Göra i ordning inför något som ska hända.","Vi förbereder oss inför provet.","förbereda förbereder förberedde förberett förberedd förberedda förbereds förbereddes förbered"],
+ ["förbud","-et -","subst","En regel som säger att något inte är tillåtet.","Det är förbud mot att röka på skolgården.","förbud förbudet förbuden"],
+ ["genomsnitt","-et","subst","Medelvärde; det vanliga eller normala. Ofta: i genomsnitt.","I genomsnitt sover tonåringar sju timmar per natt.","genomsnitt genomsnittet"],
+ ["hänsyn","-en","subst","Att tänka på andra människors känslor och behov. Man tar eller visar hänsyn.","Visa hänsyn mot dem som vill plugga i lugn och ro.","hänsyn hänsynen"],
+ ["inflytande","-t","subst","Makt att påverka hur andra tänker eller vad som händer.","Sociala medier har stort inflytande på unga.","inflytande inflytandet"],
+ ["likgiltig","-t -a","adj","Som inte bryr sig; ointresserad.","Han verkade helt likgiltig inför resultatet.","likgiltig likgiltigt likgiltiga"],
+ ["meddelande","-t -n","subst","Information som man skickar eller lämnar till någon.","Jag fick ett meddelande från mamma.","meddelande meddelandet meddelanden meddelandena"],
+ ["misstänka","-er -te -t","verb","Tro att något är sant, ofta att någon har gjort något fel, utan att veta säkert.","Polisen misstänker att branden var anlagd.","misstänka misstänker misstänkte misstänkt misstänkta misstänks misstänktes misstänk"],
+ ["närvarande","","adj","Som är på plats, som finns där. Motsats: frånvarande.","Alla elever var närvarande på lektionen.","närvarande"],
+ ["ogilla","-r -de -t","verb","Inte tycka om.","Många ogillar att stå i kö.","ogilla ogillar ogillade ogillat ogillad ogillas"],
+ ["pågå","-går -gick -gått","verb","Hålla på; fortsätta under en viss tid.","Matchen pågick i två timmar.","pågå pågår pågick pågått pågående"],
+ ["sammanträde","-t -n","subst","Möte där man diskuterar och fattar beslut.","Styrelsen har sammanträde varje månad.","sammanträde sammanträdet sammanträden sammanträdena"],
+ ["tillfälle","-t -n","subst","1) En viss tidpunkt. 2) En möjlighet, en chans.","Passa på att fråga när du får tillfälle.","tillfälle tillfället tillfällen tillfällena"],
+ ["undvika","-viker -vek -vikit","verb","Hålla sig borta från något; se till att något inte händer.","Jag försöker undvika socker på vardagar.","undvika undviker undvek undvikit undviken undviks undveks"]
+],
+2: [
+ ["anse","-ser -såg -sett","verb","Tycka; ha en åsikt om något.","Många anser att skoldagen är för lång.","anse anser ansåg ansett ansedd ansedda anses ansågs"],
+ ["anställa","-er -de -t","verb","Ge någon ett arbete. anställd = som har jobb hos någon.","Kaféet anställde tre ungdomar i somras.","anställa anställer anställde anställt anställd anställda anställs anställdes"],
+ ["avdelning","-en -ar","subst","En del av en större organisation, byggnad eller affär.","Leksakerna finns på avdelningen på andra våningen.","avdelning avdelningen avdelningar avdelningarna"],
+ ["avgift","-en -er","subst","Pengar som man måste betala för något, till exempel ett medlemskap eller en tjänst.","Det kostar en avgift att parkera här.","avgift avgiften avgifter avgifterna"],
+ ["begränsa","-r -de -t","verb","Sätta en gräns för något så att det inte blir för stort eller för mycket.","Försök begränsa skärmtiden på kvällen.","begränsa begränsar begränsade begränsat begränsad begränsas begränsades"],
+ ["behålla","-håller -höll -hållit","verb","Ha kvar; inte ge bort eller förlora.","Laget lyckades behålla ledningen hela matchen.","behålla behåller behöll behållit behållen behållet behållna"],
+ ["besviken","-et -na","adj","Ledsen för att något inte blev så bra som man hade hoppats.","Hon blev besviken när konserten ställdes in.","besviken besviket besvikna"],
+ ["bortom","","prep","På andra sidan av; längre bort än.","Bortom skogen ligger en liten sjö.","bortom"],
+ ["emellertid","","adv","Men; dock. Används mest i skrift.","Planen var bra. Den var emellertid för dyr.","emellertid"],
+ ["envis","-t -a","adj","Som inte ger upp och inte ändrar sig, fast andra försöker övertala.","Min lillebror är envis och vill alltid göra på sitt sätt.","envis envist envisa"],
+ ["förbli","-blir -blev -blivit","verb","Fortsätta att vara; stanna i samma läge.","Det här förblir en hemlighet mellan oss.","förbli förblir förblev förblivit"],
+ ["fördel","-en -ar","subst","Något som är bra eller positivt. Motsats: nackdel.","En fördel med att cykla är att man får motion.","fördel fördelen fördelar fördelarna"],
+ ["föredra","-drar -drog -dragit","verb","Tycka bättre om; hellre vilja ha. Man föredrar något framför något annat.","Hon föredrar att plugga hemma.","föredra föredrar föredrog föredragit föredragen föredras"],
+ ["förgäves","","adv","Utan resultat; i onödan.","Vi letade förgäves efter nycklarna.","förgäves"],
+ ["förhållande","-t -n","subst","1) Relation mellan personer eller saker. 2) förhållanden = situation, villkor.","De har ett nära förhållande till sina kusiner.","förhållande förhållandet förhållanden förhållandena"],
+ ["förvandla","-r -de -t","verb","Ändra helt, så att något blir något annat.","Häxan förvandlade prinsen till en groda.","förvandla förvandlar förvandlade förvandlat förvandlad förvandlas förvandlades"],
+ ["godkänna","-känner -kände -känt","verb","Säga ja till; acceptera officiellt.","Mentorn godkände min ansökan.","godkänna godkänner godkände godkänt godkänd godkända godkänns godkändes"],
+ ["indela","-r -de -t","verb","Dela upp i delar eller grupper.","Boken är indelad i tio kapitel.","indela indelar indelade indelat indelad indelas indelades"],
+ ["inför","","prep","1) Före något som snart ska hända. 2) Framför, i närvaro av.","Många är nervösa inför en muntlig redovisning.","inför"],
+ ["innehåll","-et -","subst","Det som finns i något, till exempel i en låda eller en text.","Berätta kort om filmens innehåll.","innehåll innehållet"],
+ ["medge","-ger -gav -gett","verb","Erkänna att något är sant, fast man kanske inte vill.","Jag måste medge att filmen var bättre än jag trodde.","medge medger medgav medgett medges"],
+ ["motsvara","-r -de -t","verb","Vara lika mycket som; ha samma värde eller betydelse som.","Ett svenskt gymnasium motsvarar ungefär high school i USA.","motsvara motsvarar motsvarade motsvarat motsvarande"],
+ ["omedelbart","","adv","Genast; direkt, utan att vänta.","Ring omedelbart om något händer.","omedelbart omedelbar omedelbara"],
+ ["oväsen","-det","subst","Högt och störande ljud.","Grannarnas fest förde ett fruktansvärt oväsen.","oväsen oväsendet"],
+ ["upptäcka","-er -te -t","verb","Hitta eller få veta något som man inte visste förut.","Marie Curie upptäckte två nya grundämnen.","upptäcka upptäcker upptäckte upptäckt upptäckta upptäcks upptäcktes"]
+],
+3: [
+ ["angrepp","-et -","subst","Anfall; när man attackerar någon eller något, med vapen eller med ord.","Skolans nätverk utsattes för ett angrepp av hackare.","angrepp angreppet angreppen"],
+ ["anlända","-er -de -t","verb","Komma fram till en plats. Formellt ord.","Gästerna anlände en timme för tidigt.","anlända anländer anlände anlänt anländ"],
+ ["avvakta","-r -de -t","verb","Vänta och se vad som händer innan man gör något.","Polisen valde att avvakta innan de gick in.","avvakta avvaktar avvaktade avvaktat avvaktas"],
+ ["behandla","-r -de -t","verb","1) Vara på ett visst sätt mot någon. 2) Ge vård åt någon som är sjuk. 3) Ta upp och diskutera en fråga.","Behandla andra som du själv vill bli behandlad.","behandla behandlar behandlade behandlat behandlad behandlas behandlades"],
+ ["behov","-et -","subst","Något man behöver.","Alla människor har behov av sömn.","behov behovet behoven"],
+ ["bekymmer","-ret -mer","subst","Oro; ett problem som man tänker mycket på.","Pengar är hans största bekymmer just nu.","bekymmer bekymret bekymren"],
+ ["biträde","-t -n","subst","Person som hjälper till i ett arbete; medhjälpare, assistent.","Butiksbiträdet hjälpte mig att hitta rätt storlek.","biträde biträdet biträden biträdena"],
+ ["efterhand","","adv","(så) efterhand = så småningom, lite i taget.","Efterhand fick jag fler vänner i den nya staden.","efterhand"],
+ ["enskild","-t -a","adj","1) För en person; eget, privat. 2) Individuell, en och en.","Varje elev får ett enskilt samtal med mentorn.","enskild enskilt enskilda"],
+ ["framgång","-en -ar","subst","När något går bra; succé.","Hårt arbete är ofta nyckeln till framgång.","framgång framgången framgångar framgångarna"],
+ ["föreslå","-slår -slog -slagit","verb","Ge ett förslag; säga vad man tycker att man ska göra.","Jag föreslår att vi tar en paus.","föreslå föreslår föreslog föreslagit föreslagen föreslaget föreslagna föreslås"],
+ ["företag","-et -","subst","Firma; organisation som säljer varor eller tjänster.","Min kusin har startat ett eget företag.","företag företaget företagen"],
+ ["förfölja","-er -de -t","verb","1) Följa efter någon för att fånga eller skada. 2) Behandla en grupp illa, till exempel på grund av religion eller åsikter.","Tjuven förföljdes av två poliser.","förfölja förföljer förföljde förföljt förföljd förföljda förföljs förföljdes"],
+ ["förneka","-r -de -t","verb","Säga att något inte är sant. Motsats: erkänna.","Den misstänkte förnekade brottet.","förneka förnekar förnekade förnekat förnekas"],
+ ["förorsaka","-r -de -t","verb","Orsaka; vara anledningen till något, oftast något negativt.","Stormen förorsakade stora skador.","förorsaka förorsakar förorsakade förorsakat förorsakad förorsakas"],
+ ["försörja","-er -de -t","verb","Ge någon, eller sig själv, pengar till mat, bostad och annat man behöver.","Det är svårt att försörja en stor familj på en lön.","försörja försörjer försörjde försörjt försörjd försörjs"],
+ ["gemensam","-t -ma","adj","Som två eller flera har tillsammans.","Vi har ett gemensamt intresse: musik.","gemensam gemensamt gemensamma"],
+ ["omständighet","-en -er","subst","Fakta eller förhållanden runt en händelse; situation.","Under omständigheterna gjorde du ditt bästa.","omständighet omständigheten omständigheter omständigheterna"],
+ ["tillbringa","-r -de -t","verb","Vara någonstans eller göra något under en viss tid.","Jag tillbringade sommarlovet hos min mormor.","tillbringa tillbringar tillbringade tillbringat tillbringas"],
+ ["underskatta","-r -de -t","verb","Tro att något är mindre, lättare eller sämre än det egentligen är.","Underskatta inte hur lång tid läxan tar.","underskatta underskattar underskattade underskattat underskattad underskattas"],
+ ["undgå","-går -gick -gått","verb","1) Klara sig undan något. 2) inte kunna undgå att = inte kunna låta bli att.","Han undgick straff tack vare en bra advokat.","undgå undgår undgick undgått"],
+ ["upprepa","-r -de -t","verb","Säga eller göra något en gång till.","Läraren upprepade instruktionen tre gånger.","upprepa upprepar upprepade upprepat upprepad upprepas"],
+ ["utnyttja","-r -de -t","verb","1) Använda på ett bra sätt. 2) Använda någon på ett orättvist sätt.","Utnyttja tiden väl före provet.","utnyttja utnyttjar utnyttjade utnyttjat utnyttjad utnyttjas"],
+ ["åsikt","-en -er","subst","Det man tycker om något.","Alla har rätt till sin egen åsikt.","åsikt åsikten åsikter åsikterna"],
+ ["överraska","-r -de -t","verb","Göra något som någon inte väntar sig.","Vi överraskade henne med en tårta.","överraska överraskar överraskade överraskat överraskad överraskas"]
+],
+4: [
+ ["ansvar","-et","subst","Plikt att se till att något blir gjort eller går bra. Man har ansvar för något.","Du har själv ansvar för att lämna in uppgiften i tid.","ansvar ansvaret"],
+ ["avskeda","-r -de -t","verb","Ta ifrån någon hans eller hennes jobb; sparka.","Företaget avskedade tio anställda.","avskeda avskedar avskedade avskedat avskedad avskedas"],
+ ["befinna sig","-finner -fann -funnit","verb","Vara på en plats eller i en situation.","Var befinner du dig just nu?","befinna befinner befann befunnit"],
+ ["belägen","-et -na","adj","Som ligger på en viss plats.","Skolan är belägen nära stationen.","belägen beläget belägna"],
+ ["beundra","-r -de -t","verb","Tycka mycket om och se upp till någon eller något.","Jag beundrar människor som vågar säga vad de tycker.","beundra beundrar beundrade beundrat beundrad beundras"],
+ ["därmed","","adv","1) Och så; med det. 2) Därför, på det sättet.","Hon vann loppet och därmed guldmedaljen.","därmed"],
+ ["ersätta","-sätter -satte -satt","verb","1) Ta någons eller någots plats. 2) Betala för en förlust eller skada.","Försäkringen ersätter den trasiga telefonen.","ersätta ersätter ersatte ersatt ersatta ersätts ersattes"],
+ ["förbättra","-r -de -t","verb","Göra bättre.","Jag vill förbättra mitt betyg i matte.","förbättra förbättrar förbättrade förbättrat förbättrad förbättras"],
+ ["förekomst","-en -er","subst","Att något finns eller förekommer någonstans.","Forskarna undersöker förekomsten av varg i Värmland.","förekomst förekomsten förekomster förekomsterna"],
+ ["förhindra","-r -de -t","verb","Se till att något inte händer.","Hjälm kan förhindra allvarliga skador.","förhindra förhindrar förhindrade förhindrat förhindras"],
+ ["förtjäna","-r -de -t","verb","Vara värd något, på grund av det man har gjort.","Laget förtjänade att vinna.","förtjäna förtjänar förtjänade förtjänat förtjänas"],
+ ["förväxla","-r -de -t","verb","Blanda ihop; tro att en sak eller person är en annan.","Man förväxlar lätt tvillingarna.","förväxla förväxlar förväxlade förväxlat förväxlas"],
+ ["inse","-ser -såg -sett","verb","Förstå, ofta efter en stund eller efter att ha tänkt.","Till slut insåg jag att jag hade fel.","inse inser insåg insett inses"],
+ ["inträffa","-r -de -t","verb","Hända, ske.","Olyckan inträffade mitt i natten.","inträffa inträffar inträffade inträffat"],
+ ["medveten","-et -na","adj","Som vet om och förstår något. Man är medveten om något.","Är du medveten om hur mycket tid du lägger på mobilen?","medveten medvetet medvetna"],
+ ["nedanstående","","adj","Som står längre ner i texten.","Svara på nedanstående frågor.","nedanstående"],
+ ["ogiltig","-t -a","adj","Som inte gäller, eller inte gäller längre.","Biljetten är ogiltig efter klockan 22.","ogiltig ogiltigt ogiltiga"],
+ ["ojämn","-t -a","adj","Inte slät eller jämn; inte likadan överallt.","Laget spelade en ojämn match.","ojämn ojämnt ojämna"],
+ ["omfattande","","adj","Stor; som gäller mycket eller många saker.","Efter stormen krävdes omfattande reparationer.","omfattande"],
+ ["påstå","-står -stod -stått","verb","Säga att något är sant, utan att bevisa det.","Han påstår att han har träffat kungen.","påstå påstår påstod påstått påstådd påstås"],
+ ["tillstånd","-et -","subst","1) Lov; att man får göra något. 2) Hur något eller någon mår eller är.","Man behöver tillstånd för att bygga ett hus.","tillstånd tillståndet tillstånden"],
+ ["uppfatta","-r -de -t","verb","1) Höra eller förstå. 2) Tolka på ett visst sätt.","Hur uppfattade du filmen?","uppfatta uppfattar uppfattade uppfattat uppfattad uppfattas"],
+ ["uppträda","-er -dde -tt","verb","1) Spela, sjunga eller dansa inför publik. 2) Bete sig.","Bandet uppträdde på skolans avslutning.","uppträda uppträder uppträdde uppträtt"],
+ ["utrymme","-t -n","subst","Plats.","Det finns inte utrymme för en soffa i rummet.","utrymme utrymmet utrymmen utrymmena"],
+ ["åtskillig","-t -a","adj","Ganska många; flera.","Jag har försökt åtskilliga gånger.","åtskillig åtskilligt åtskilliga"]
+]};
+
+// ---------- b: OMFORMULERA ----------  [originalmening, ny mening med ___, svar (| = alternativ, ; = flera luckor)]
+const B = {
+1: [
+ ["Han var där.","Han var ___.","närvarande"],
+ ["De var helt ointresserade.","De var ___.","likgiltiga"],
+ ["Medeltalet är 26,5.","Det är 26,5 i ___.","genomsnitt"],
+ ["De tror att han är skyldig.","De ___ honom.","misstänker"],
+ ["Vad är din åsikt om det?","Hur ___ du det?","bedömer"],
+ ["De var positiva, men inte han.","Han ___ var negativ.","däremot"],
+ ["Vad är orsaken?","Vad är ___?","anledningen"],
+ ["Vi såg den på flera kilometers håll.","Vi såg den på långt ___.","avstånd"],
+ ["Jag ska planera det väl.","Jag ska ___ det väl.","förbereda"],
+ ["Fick du upplysningen?","Fick du ___?","meddelandet"],
+ ["Du bör hålla dig borta från det.","Du bör ___ det.","undvika"],
+ ["De rapporterade det till polisen.","De ___ det till polisen.","anmälde"],
+ ["Vi får pengar i understöd.","Vi får ___.","bidrag"],
+ ["Jag visste inte att det var förbjudet.","Jag kände inte till ___.","förbudet"],
+ ["Jag tycker inte om hans sätt.","Jag ___ hans sätt.","ogillar"],
+ ["Många vill skaffa sig digitalkamera.","Det är stor ___ på digitalkameror.","efterfrågan"],
+ ["Det här är en lämplig tidpunkt.","Det här är ett bra ___.","tillfälle"],
+ ["Hon har upplevt och lärt sig mycket.","Hon har stor ___.","erfarenhet"],
+ ["De har makt att påverka.","De har ___.","inflytande"],
+ ["Det är långt borta.","Det är ___.","avlägset"],
+ ["Hur länge håller programmet på?","Hur länge ___ programmet?","pågår"],
+ ["Fabriken gör reservdelar.","Fabriken ___ reservdelar.","framställer"],
+ ["Han respekterar våra känslor.","Han visar ___.","hänsyn"],
+ ["Ett bord är reserverat för oss.","Vi har ___ bord.","beställt"],
+ ["Han är på ett möte.","Han sitter i ett ___.","sammanträde"]
+],
+2: [
+ ["Det har flera positiva sidor.","Det har flera ___.","fördelar"],
+ ["Jag måste hålla med om det.","Jag ___ det.","medger"],
+ ["De hittade flera fel.","De ___ flera fel.","upptäckte"],
+ ["Man kör förbi idrottsplatsen.","Det ligger ___ idrottsplatsen.","bortom"],
+ ["Vad tycker du?","Vad ___ du?","anser"],
+ ["Snart börjar ett nytt läsår.","Vi står ___ ett nytt läsår.","inför"],
+ ["De har förändrat det radikalt.","De har ___ det.","förvandlat"],
+ ["Vad är det för oljud?","Vad är det för ___?","oväsen"],
+ ["Hon ger sig inte.","Hon är ___.","envis"],
+ ["Det är bra. Vi accepterar det.","Vi ___ det.","godkänner"],
+ ["100 personer arbetar för dem.","De har ___ 100 personer.","anställt"],
+ ["Jag är ledsen och missnöjd.","Jag är ___.","besviken"],
+ ["Det är dock svårt.","Det är ___ svårt.","emellertid"],
+ ["Det tjänade ingenting till.","Det var ___.","förgäves"],
+ ["Det är jämförbart med vårt system.","Det ___ vårt system.","motsvarar"],
+ ["Hur är relationen mellan dem?","Hur är ___ mellan dem?","förhållandet"],
+ ["Var på varuhuset säljs resväskor?","På vilken ___ säljs resväskor?","avdelning"],
+ ["Du får ha kvar boken.","Du får ___ boken.","behålla"],
+ ["De delar upp oss i grupper.","De ___ oss i grupper.","indelar"],
+ ["Han kom genast.","Han kom ___.","omedelbart"],
+ ["Vi betalar 500 kr i månaden.","___ är 500 kr i månaden.","avgiften"],
+ ["Vad finns inuti den?","Vad har den för ___?","innehåll"],
+ ["De vill inte att det blir större.","De vill ___ det.","begränsa"],
+ ["Jag åker hellre tåg än buss.","Jag ___ tåg framför buss.","föredrar"],
+ ["Han gifte sig aldrig.","Han ___ ogift.","förblev"]
+],
+3: [
+ ["Så småningom blev det bättre.","___ blev det bättre.","efterhand|så efterhand"],
+ ["De är efter oss för att skada oss.","De ___ oss.","förföljer"],
+ ["De är framme i Tokyo kl. 10.","De ___ till Tokyo kl. 10.","anländer|anlände"],
+ ["De repeterade meddelandet.","De ___ meddelandet.","upprepade"],
+ ["De har hand om barnen tillsammans.","De har ___ vårdnad.","gemensam"],
+ ["Vad rekommenderar ni?","Vad ___ ni?","föreslår"],
+ ["Dra nytta av situationen!","___ situationen!","utnyttja"],
+ ["De tar upp och diskuterar frågan i morgon.","De ___ frågan i morgon.","behandlar"],
+ ["Det är en firma i databranschen.","Det är ett ___ i databranschen.","företag"],
+ ["Jag är deras assistent.","Jag är deras ___.","biträde"],
+ ["Hur är förhållandena?","Hur är ___?","omständigheterna"],
+ ["De värdesätter det inte tillräckligt.","De ___ det.","underskattar"],
+ ["De gjorde ett anfall.","De gick till ___.","angrepp"],
+ ["Det oroar mig.","Det är ett ___ för mig.","bekymmer"],
+ ["Han lyckades klara sig undan kontroll.","Han ___ kontroll.","undgick"],
+ ["Hon delar inte rum med någon.","Hon har ___ rum.","enskilt"],
+ ["Han erkände inte att han gjort det.","Han ___ att han gjort det.","förnekade"],
+ ["Det leder till allvarliga problem.","Det ___ allvarliga problem.","förorsakar"],
+ ["Vi väntar på resultatet.","Vi ___ resultatet.","avvaktar"],
+ ["Han var där en vecka.","Han ___ en vecka där.","tillbringade"],
+ ["Jag underhåller familjen.","Jag ___ familjen.","försörjer"],
+ ["Jag behöver det. Det är en nödvändighet.","Det är ett ___.","behov"],
+ ["Det tycker jag. Det är min mening.","Det är min ___.","åsikt"],
+ ["Resultatet blev lyckat.","Det blev en ___.","framgång"],
+ ["Det förvånade oss.","Det ___ oss.","överraskade"]
+],
+4: [
+ ["Han har spelat på flera teaterscener.","Han har ___ på flera teaterscener.","uppträtt"],
+ ["Vägen är inte slät.","Vägen är ___.","ojämn"],
+ ["De är någonstans i huset.","De ___ någonstans i huset.","befinner sig"],
+ ["Att det finns råttor är ett problem.","___ av råttor är ett problem.","förekomsten"],
+ ["När och var hände det?","När och var ___ det?","inträffade"],
+ ["Läs texten längre ner på pappret!","Läs ___ text!","nedanstående"],
+ ["Han har skrivit många artiklar.","Han har skrivit ___ artiklar.","åtskilliga"],
+ ["Det vill jag bestämt säga.","Det ___ jag.","påstår"],
+ ["Hon svarar för att det blir gjort.","Hon har ___ för att det blir gjort.","ansvar|ansvaret"],
+ ["Jag är här i hans ställe.","Jag ___ honom.","ersätter"],
+ ["Vi ska se till att det inte händer igen.","Vi ska ___ en upprepning.","förhindra"],
+ ["Jag förstår att det är svårt.","Jag ___ att det är svårt.","inser"],
+ ["Får du sälja dina varor här?","Har du ___ att sälja dina varor här?","tillstånd"],
+ ["Han är imponerad av dig.","Han ___ dig.","beundrar"],
+ ["Jag blandade ihop deras namn.","Jag ___ deras namn.","förväxlade"],
+ ["Efter dessa ord lämnade han rummet.","___ lämnade han rummet.","därmed"],
+ ["Det kan hjälpa upp vår situation.","Det kan ___ vår situation.","förbättra"],
+ ["Jag förstod inte frågan riktigt klart.","Jag ___ inte frågan.","uppfattade"],
+ ["Här finns det rum för flera.","Här finns det ___ för flera.","utrymme"],
+ ["De har gjort stora förbättringar.","De har gjort ___ förbättringar.","omfattande"],
+ ["Passet gäller inte längre.","Passet är ___.","ogiltigt"],
+ ["Hon är värd ett stort tack.","Hon ___ ett stort tack.","förtjänar"],
+ ["Inser du riskerna?","Är du ___ om riskerna?","medveten"],
+ ["Var ligger fabriken?","Var är fabriken ___?","belägen"],
+ ["Han fick inte behålla sin anställning.","De ___ honom.","avskedade"]
+]};
+
+// ---------- c: FYLL I ----------  vanliga: [mening med ___, svar]  flerval: {p, o:[a,b,c], r:index}
+const C = {
+1: [
+ ["___ till närmaste stad är 8 kilometer.","avståndet"],
+ ["Kan vi träffas vid ett senare ___? Jag är upptagen just nu.","tillfälle"],
+ ["Idag har jag ___ mig till en kurs i ekonomi.","anmält"],
+ ["De har för lite att säga till om. De vill ha mer ___ på sin arbetsplats.","inflytande"],
+ ["Hur kan ni ___ honom för att ha tagit pengarna?","misstänka"],
+ ["___ till att han inte kom var att han hade försovit sig.","anledningen"],
+ ["Det är mycket trafik på fredagseftermiddagarna, så jag ___ att köra då.","undviker"],
+ ["Hon arbetar i ___ 30 timmar i veckan.","genomsnitt"],
+ ["Han har varit lärare i tjugo år, så han har lång ___ av arbete med ungdomar.","erfarenhet"],
+ ["Jag tycker inte att man visar tillräcklig ___ till de gamla och sjuka i samhället.","hänsyn"],
+ ["Kriget har ___ i tio år och alla längtar efter fred.","pågått"],
+ ["Cider är en dryck som man ___ av äpplen.","framställer"],
+ ["Läkaren ___ hans hälsotillstånd som gott.","bedömer|bedömde"],
+ ["Är du helt ___? Bryr du dig inte alls om hur det går?","likgiltig"],
+ ["I morgon har vi ett viktigt ___. Då ska vi diskutera budgeten.","sammanträde"],
+ ["Han bor i en ___ by långt ute på landet med flera kilometer till närmaste granne.","avlägsen"],
+ ["Nu har vi ___ biobiljetter. De ska hämtas senast kl. 7.","beställt"],
+ ["Många röker i tunnelbanan trots ___.","förbudet"],
+ ["Jag tror att om man ___ resan noga får man större nöje av den.","förbereder"],
+ ["En telefonsvarare är ett slags bandspelare där man lämnar ett ___ om att man har ringt.","meddelande"],
+ ["Han var positiv, men hon ___ förslaget.","ogillade"],
+ ["Det är stor ___ på små lägenheter i stan.","efterfrågan"],
+ ["Jag var inte ___ vid sammanträdet, så jag vet inte vad som hände.","närvarande"],
+ ["För att klara kostnaderna har vi sökt ett ___ på 10 000 kronor från kommunen.","bidrag"],
+ ["Jag har inte tid ikväll. ___ skulle vi kunna ses på torsdag, om du vill.","däremot"]
+],
+2: [
+ ["Det var svårt att sova på grund av allt ___ utanför huset.","oväsen"],
+ ["Var det Christofer Columbus som ___ Amerika?","upptäckte"],
+ ["En euro ___ ungefär elva svenska kronor.","motsvarar"],
+ ["___ är 20 kronor för vuxna och 10 kronor för barn.","avgiften"],
+ ["Vi sålde alla möblerna men ___ några gamla tavlor.","behöll"],
+ ["Jag var ___. Jag hade hoppats på ett mycket bättre resultat.","besviken"],
+ ["Flaskan gick sönder och ___ rann ut.","innehållet"],
+ ["Landet har ___ importen av olja därför att kostnaderna var för höga.","begränsat"],
+ ["Den nya bostaden har många ___. Den är ljus och modern och har ett bra läge.","fördelar"],
+ ["___ mellan läraren och eleverna är öppet och kamratligt.","förhållandet"],
+ ["Vi fick inga pengar för de ___ inte vår räkning.","godkände"],
+ ["Han ___ att det verkade svårt, men han tänkte i alla fall försöka.","medgav|medger"],
+ ["Vi har inte tid att vänta. Det måste göras ___.","omedelbart"],
+ ["Jag känner oro ___ framtiden.","inför"],
+ ["Man brukade ___ befolkningen i tre socialgrupper.","indela"],
+ ["Jag tycker inte om video. Jag ___ att se film på bio.","föredrar"],
+ ["I semestertider brukar de ___ extra personal.","anställa"],
+ ["Solen går ner ___ bergen och färgar kvällshimlen röd.","bortom"],
+ ["Han är intagen på sjukhus, men jag vet inte vilken ___ han ligger på.","avdelning"],
+ ["Vad ___ du att regeringen bör göra?","anser"],
+ {p:"Det var förgäves.",o:["Det var inte som väntat.","Det motsvarade förväntningarna.","Det var bortkastat."],r:2},
+ {p:"Den förblev min.",o:["De tog den ifrån mig.","Jag fick den.","Den stannade hos mig."],r:2},
+ {p:"Man har förvandlat dem.",o:["De har fått arbete.","De är nu helt annorlunda.","De har försvunnit."],r:1},
+ {p:"Han var emellertid sjuk.",o:["Men han var sjuk.","Han var sjuk under tiden.","Han var sjuk flera gånger."],r:0},
+ {p:"Han är envis.",o:["Han vet mest av alla.","Han är ledsen nu.","Han ger sig inte."],r:2}
+],
+3: [
+ ["Det är viktigt att man ___ sina resurser på rätt sätt.","utnyttjar"],
+ ["Han är poet, men det kan han inte ___ sig på, så han kör taxi på helgerna.","försörja"],
+ ["De ___ dit flera timmar försenade.","anlände"],
+ ["Jag hörde inte. Vill du ___ din fråga?","upprepa"],
+ ["Den långvariga torkan har ___ stor brist på vatten och livsmedel.","förorsakat"],
+ ["Om man vill ha ___ rum istället för att dela med någon annan måste man betala 75 kronor extra.","enskilt"],
+ ["Har ni tagit hänsyn till de svåra ___ som de lever under?","omständigheter"],
+ ["I sin kritiska artikel går han till skarpt ___ mot regeringens skattepolitik.","angrepp"],
+ ["Enligt lagen är det förbjudet att ___ människor på grund av ursprung eller religion.","förfölja"],
+ ["Vi har varsin lägenhet, men tvättstugan är ___ för alla i huset.","gemensam"],
+ ["Jag vet vad de andra tycker och nu vill jag gärna höra din ___.","åsikt"],
+ ["Han medgav att han hade varit där, men han ___ att han hade tagit pengarna.","förnekade"],
+ ["Efter de stora ___ hade hon all anledning att känna sig nöjd och lycklig.","framgångarna"],
+ ["Vi vill ___ deras svar innan vi fattar beslut.","avvakta"],
+ ["Resurserna är små men ___ är tyvärr mycket stort.","behovet"],
+ ["Du ser ledsen ut. Har du ___?","bekymmer"],
+ ["Jag oroar mig över hur de ___ flyktingarna.","behandlar|behandlade"],
+ ["Jag ville inte lyssna, men jag kunde inte ___ att höra vad de pratade om.","undgå"],
+ ["De brukar ___ jul och nyår hos släktingar.","tillbringa"],
+ ["Du ___ honom. Han är faktiskt mycket duktigare än du tror.","underskattar"],
+ ["Som ___ får man hjälpa till med olika saker och rycka in där det behövs.","biträde"],
+ ["Först verkade det svårt men ___ gick det lättare.","efterhand|så efterhand"],
+ ["Vi hade inte väntat oss något besök så de ___ oss verkligen.","överraskade"],
+ ["Volvo är ett av Sveriges största och viktigaste ___.","företag"],
+ ["De ___ att vi skulle äta lunch tillsammans och det tyckte jag var ett bra förslag.","föreslog"]
+],
+4: [
+ {match:true,
+  left:["Han har förtjänat","Han befann sig","Han är inte medveten","Han har ansvar","Han uppfattade våra råd","Den är belägen","Han blev avskedad","Vi måste förhindra","Han vill förbättra"],
+  right:["för säkerheten ombord.","från arbetet.","som kritik.","att sjukdomen sprids.","tre kilometer härifrån.","om problemens omfattning.","förhållandena.","en lång semester.","utomlands när det inträffade."],
+  key:[7,8,5,0,2,4,1,3,6]},
+ {p:"Han beundrade dem.",o:["Han var förvånad över dem.","Han förstod dem inte riktigt.","Han såg upp till dem."],r:2},
+ {p:"De påstod det.",o:["De sa det.","De förnekade det.","De höll tyst om det."],r:0},
+ {p:"Den var omfattande.",o:["Alla förstod den.","Den var stor.","Den var inte klar."],r:1},
+ {p:"Utrymmet var litet.",o:["Det var ont om plats.","Nästan ingenting hade försvunnit.","Ljudet var på låg nivå."],r:0},
+ {p:"Det var ojämnt.",o:["Man hade inte använt det.","Man kunde inte använda det.","Det var inte likadant på båda sidorna."],r:2}
+]};
+
+// ---------- TEST 1–4 ----------
+const TEST = [
+ {id:"avsluta", name:"Avsluta orden", short:"Avsluta", instr:"Början av ordet står redan där. Skriv resten av ordet i rätt form.",
+  items:[
+   ["Har du [an] dig till kursen?","anmält"],
+   ["Vi fick inget [till] att träffa honom.","tillfälle"],
+   ["De lämnade ett [bi] på 100 kronor.","bidrag"],
+   ["Jag ser bra utan glasögon på kort [av].","avstånd"],
+   ["De nya mobiltelefonerna har blivit mycket populära och [efter] har ökat med 30 %.","efterfrågan"],
+   ["Han [för] ogift hela sitt liv.","förblev"],
+   ["Har du betalat [av] till vägföreningen?","avgiften"],
+   ["Jag är [an] på ett norskt [före].","anställd;företag"],
+   ["De brukar [till] semestern utomlands.","tillbringa"],
+   ["Hon var politiskt [för].","förföljd"],
+   ["Efter skilsmässan fick makarna [ge] vårdnad om barnen.","gemensam"],
+   ["Jag blev [be] när han inte höll sitt löfte.","besviken"],
+   ["Var [be] du dig när olyckan hände?","befann"],
+   ["Gården är [be] vid en sjö.","belägen"],
+   ["Jag är [med] om att jag har ett stort [an].","medveten;ansvar"],
+   ["Man måste ha särskilt [till] för att parkera här.","tillstånd"],
+   ["Händelsen [in] torsdagen den 10 april.","inträffade|inträffar"],
+   ["Hon har besökt [åt] företag i Japan.","åtskilliga"]
+  ]},
+ {id:"ning", name:"A · Verb → substantiv på -ing/-ning", short:"-ing/-ning", instr:"Gör om verbet till ett substantiv som slutar på -ing eller -ning.",
+  pairs:[
+   ["anställa","___","anställning"],["bedöma","___","bedömning"],["begränsa","___","begränsning"],["behandla","___","behandling"],
+   ["behålla","___","behållning"],["beställa","___","beställning"],["ersätta","___","ersättning"],["framställa","___","framställning"],
+   ["förbättra","___","förbättring"],["försörja","___","försörjning"],["förvandla","___","förvandling"],["förväxla","___","förväxling"]
+  ]},
+ {id:"ande", name:"B · Verb ↔ substantiv på -ande/-ende", short:"-ande/-ende", instr:"Skriv substantivet på -ande eller -ende. Där substantivet redan står, skriver du verbet.",
+  pairs:[
+   ["förhålla (sig)","ett ___","förhållande",1],["meddela","ett ___","meddelande"],["___","ett medgivande","medge"],
+   ["förneka","ett ___","förnekande"],["utnyttja","ett ___","utnyttjande"],["___","ett påstående","påstå"],
+   ["uppträda","ett ___","uppträdande"],["ogilla","ett ___","ogillande"]
+  ]},
+ {id:"subst", name:"C · Verb ↔ substantiv", short:"Verb ↔ subst.", instr:"Skriv det substantiv som hör ihop med verbet. Där substantivet redan står, skriver du verbet.",
+  pairs:[
+   ["angripa","ett ___","angrepp"],["ansvara","ett ___","ansvar"],["___","ett avsked/avskedande","avskeda"],
+   ["behöva","ett ___","behov"],["bidra","ett ___","bidrag"],["biträda","ett ___","biträde"],
+   ["förbjuda","ett ___","förbud"],["förekomma","en ___","förekomst"],["___","ett förslag","föreslå"],
+   ["___","en förtjänst","förtjäna"],["innehålla","ett ___","innehåll"],["___","en insikt","inse"],
+   ["___","en misstanke","misstänka"],["sammanträda","ett ___","sammanträde"],["___","en upptäckt","upptäcka"]
+  ]},
+ {id:"part", name:"D · Particip och adjektiv", short:"Particip", instr:"Gör om ordet till den ordklass som står under luckan och skriv det i rätt form.",
+  items:[
+   ["Hur länge har du varit ___ här?","anställd","anställa","perfekt particip",1],
+   ["De hade bråttom och ___ sig snabbt därifrån.","avlägsnade","avlägsen","verb"],
+   ["Antalet platser är ___ till 250.","begränsat","begränsa","perfekt particip"],
+   ["Vi är alla mycket ___ över framtiden.","bekymrade","bekymmer","perfekt particip"],
+   ["Hon är en mycket skicklig och ___ läkare.","erfaren","erfarenhet","perfekt particip"],
+   ["Jag var inte alls ___ på frågorna.","förberedd","förbereda","perfekt particip"],
+   ["Varför är hundar ___ här?","förbjudna","förbud","perfekt particip"],
+   ["De erbjöd mycket ___ villkor.","fördelaktiga","fördel","adjektiv"],
+   ["De flydde utomlands därför att de var ___.","förföljda","förfölja","perfekt particip"],
+   ["Jag vill klara mig själv och inte vara ___ av någon.","försörjd","försörja","perfekt particip"],
+   ["Han var mycket vänlig och ___.","hänsynsfull","hänsyn","adjektiv"],
+   ["Han är ___ för mord.","misstänkt","misstänka","perfekt particip"],
+   ["De får inte störas under ___ sammanträde.","pågående","pågå","presens particip"],
+   ["Jag kände mig besviken och ___.","utnyttjad","utnyttja","perfekt particip"],
+   ["Hon blev ___ när de dök upp helt plötsligt.","överraskad","överraska","perfekt particip"]
+  ]}
+];
+
+</script>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const POS={subst:"substantiv",verb:"verb",adj:"adjektiv",adv:"adverb",prep:"preposition"};
+
+/* ---------- ordformer ---------- */
+const FORMS={}; // form -> {lemma,s,pos}
+const STYCKEN=Object.keys(WORDS).map(Number).sort((a,b)=>a-b);
+const SID=SET.id.replace("-","_");
+for(const s of STYCKEN) for(const w of WORDS[s]){
+  for(const f of w[5].split(" ")) if(!FORMS[f]) FORMS[f]={lemma:w[0],s,pos:w[2]};
+  if(w[0].includes(" ")) for(const f of w[5].split(" ")) FORMS[f+" sig"]={lemma:w[0],s,pos:w[2]};
+}
+function norm(s){return String(s||"").toLowerCase().replace(/[’`]/g,"'").replace(/\s+/g," ").trim().replace(/^[.,!?;:"']+|[.,!?;:"']+$/g,"").trim();}
+function lookup(v){v=norm(v); if(FORMS[v]) return FORMS[v]; const f=v.split(" ")[0]; return FORMS[f]||null;}
+function lev(a,b){const m=a.length,n=b.length;if(Math.abs(m-n)>2)return 9;let p=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c;}return p[n];}
+
+/* ---------- bygg övningarna ---------- */
+// Varje uppgift: {key,label,type:'fill'|'mc'|'match', parts:[...], blanks:[{alts,pre}], orig, tag, pair, example}
+function parseTemplate(t){ // ___ = lucka, [pre] = lucka med början
+  const parts=[];const re=/___|\[([^\]]+)\]/g;let last=0,m;
+  while((m=re.exec(t))){parts.push({t:t.slice(last,m.index)});parts.push({gap:true,pre:m[1]||""});last=re.lastIndex;}
+  parts.push({t:t.slice(last)});return parts;
+}
+function mkFill(key,label,tmpl,ans,extra){
+  const parts=parseTemplate(tmpl);const answers=ans.split(";");let bi=0;
+  const blanks=[];parts.forEach(p=>{if(p.gap){blanks.push({alts:answers[bi].split("|"),pre:p.pre});p.bi=bi++;}});
+  return Object.assign({key,label,type:"fill",parts,blanks},extra||{});
+}
+const EX={}; // exid -> {title,items,kind}
+for(const s of STYCKEN){
+  EX["s"+s+"b"]={kind:"b",s,items:B[s].map((r,i)=>mkFill(`s${s}b-${i}`,i+1,r[1],r[2],{orig:r[0]}))};
+  let n=0;
+  EX["s"+s+"c"]={kind:"c",s,items:C[s].map((r,i)=>{
+    if(Array.isArray(r)) return mkFill(`s${s}c-${i}`,++n,r[0],r[1]);
+    if(r.match){const a=n+1;n+=r.left.length;return {key:`s${s}c-${i}`,label:`${a}–${n}`,type:"match",m:r};}
+    return {key:`s${s}c-${i}`,label:++n,type:"mc",q:r};
+  })};
+}
+for(const t of TEST){
+  let items=[], n=0; const tid=`t${SID}-${t.id}`;
+  // items: [mening, svar, (grundord, ordklass, exempel)]   pairs: [vänster, höger, svar, exempel]
+  if(t.items) items=t.items.map((r,i)=>{const ex=!!r[4]; if(!ex) n++;
+    return mkFill(`${tid}-${i}`,ex?"Ex":n,r[0],r[1],r[2]?{test:true,tag:{base:r[2],pos:r[3]},example:ex}:{test:true,example:ex});});
+  if(t.pairs) items=t.pairs.map((r,i)=>{const ex=!!r[3]; if(!ex) n++;
+    const leftGap=r[0]==="___";
+    return mkFill(`${tid}-${i}`,ex?"Ex":n,leftGap?"___":r[1],r[2],{test:true,example:ex,pair:{left:r[0],right:r[1],leftGap,lh:t.lh||"Verb",rh:t.rh||"Substantiv"}});
+  });
+  EX[tid]={kind:"t",t,items};
+}
+
+/* ---------- tillstånd ---------- */
+const KEY="ordtraning-"+SET.id+"-gas-v2";
+let state={tab:String(STYCKEN[0]),sub:Object.assign(Object.fromEntries(STYCKEN.map(s=>[String(s),"a"])),{t:TEST[0].id}),idx:{},log:{},tr:{},hideExp:false,aview:"grid"};
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s)state=Object.assign(state,s);}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function L(key){return state.log[key]||(state.log[key]={tries:0,wrong:[],done:false,shown:false,val:[]});}
+
+const TABS=STYCKEN.map(s=>[String(s),"Ord "+s]).concat([["t","Test "+SET.label]]);
+document.title=SET.title; document.getElementById("title").textContent=SET.title;
+function curEx(){ if(state.tab==="t") return `t${SID}-${state.sub.t}`; const sub=state.sub[state.tab]; return sub==="a"?null:"s"+state.tab+sub; }
+
+/* ---------- rendering ---------- */
+function render(){
+  $("#tabs").innerHTML=TABS.map(([k,n])=>`<button role="tab" aria-selected="${state.tab===k}" data-tab="${k}">${n}</button>`).join("");
+  const m=$("#main");
+  if(state.tab==="t") return renderTest(m);
+  const s=+state.tab, sub=state.sub[state.tab];
+  const hasMatch=C[s].some(r=>r&&r.match), hasMc=C[s].some(r=>r&&r.o);
+  const cLabel=hasMatch?"Para ihop och välj":"Fyll i";
+  let h=`<div class="subnav" role="group" aria-label="Del">`+
+    [["a","Ordlista"],["b","Omformulera"],["c",cLabel]].map(([k,n])=>`<button data-sub="${k}" aria-pressed="${sub===k}"><span class="k">${s}${k}</span>${n}</button>`).join("")+`</div>`;
+  if(sub==="a"){ m.innerHTML=h+renderList(s); $("#foot").hidden=state.aview==="grid"; if(state.aview!=="grid") renderDots(); bindList(); return; }
+  const exid="s"+s+sub, ex=EX[exid];
+  const instr = sub==="b" ? "Skriv om meningen med ett ord från rutan. <b>Skriv ordet i rätt form.</b>"
+    : hasMatch ? "Para ihop början och slutet av meningarna. Välj sedan meningen som betyder samma sak."
+    : "Välj ord från rutan och <b>skriv dem i rätt form.</b>";
+  h+=`<p class="instr">${instr}</p>`;
+  const it=ex.items[idx(exid)];
+  if(it.type==="fill") h+=bankHtml(s,exid);
+  h+=itemHtml(it);
+  m.innerHTML=h; $("#foot").hidden=false; renderDots(); bindItem(it);
+}
+function renderTest(m){
+  const t=EX[curEx()].t;
+  let h=`<div class="subnav" role="group" aria-label="Del">`+TEST.map(x=>`<button data-sub="${x.id}" aria-pressed="${state.sub.t===x.id}">${x.short}</button>`).join("")+`</div>`;
+  h+=`<p class="instr"><b>${esc(t.name)}.</b> ${esc(t.instr)}</p>`;
+  const exid=curEx(), it=EX[exid].items[idx(exid)];
+  h+=itemHtml(it);
+  m.innerHTML=h; $("#foot").hidden=false; renderDots(); bindItem(it);
+}
+function idx(exid){const n=EX[exid].items.length;let i=state.idx[exid]||0;if(i>=n)i=n-1;return i;}
+
+function bankHtml(s,exid){
+  const used=new Set();
+  for(const it of EX[exid].items) if(it.type==="fill"&&L(it.key).done) for(const b of it.blanks){const f=lookup(b.alts[0]);if(f)used.add(f.lemma);}
+  const open=state.bankClosed?"":" open";
+  return `<details class="bank" id="bank"${open}><summary>Ordruta · klicka på ett ord för att skriva in det</summary><div class="chips">`+
+    WORDS[s].map(w=>`<button class="chip${used.has(w[0])?" used":""}" data-w="${esc(w[0])}">${esc(w[0])}</button>`).join("")+`</div></details>`;
+}
+
+function itemHtml(it){
+  const lg=L(it.key), done=lg.done||it.example;
+  let h=`<section class="item${done?" done":""}" id="item"><div class="itemhead"><span class="num">${it.label}</span><div style="flex:1">`;
+  if(it.type==="fill"){
+    if(it.orig) h+=`<p class="orig">${esc(it.orig)}</p><div class="arrow">Skriv om</div>`;
+    if(it.tag) h+=`<span class="tag"><b>${esc(it.tag.base)}</b> → ${esc(it.tag.pos)}</span>`;
+    if(it.pair){
+      const p=it.pair;
+      const L1=p.leftGap?gapHtml(it,0,done):esc(p.left);
+      const R1=p.leftGap?esc(p.right):esc(p.right.split("___")[0])+gapHtml(it,0,done);
+      h+=`<div class="pairrow"><div><span class="lbl">Verb</span>${L1}</div><div class="mid">→</div><div><span class="lbl">Substantiv</span>${R1}</div></div>`;
+    } else {
+      h+=`<p class="sent">`+it.parts.map(p=>p.gap?gapHtml(it,p.bi,done):esc(p.t)).join("")+`</p>`;
+    }
+    h+=`</div></div><div class="actions">
+      <button class="btn primary" id="checkBtn"${done?" hidden":""}>Kontrollera</button>
+      <button class="btn quiet" id="hintBtn"${done?" hidden":""}>Ledtråd</button>
+      <button class="btn quiet" id="showBtn"${done?" hidden":""}>Visa svar</button>
+      <button class="btn primary" id="nextBtn"${done?"":" hidden"}>Nästa →</button></div>`;
+  } else if(it.type==="mc"){
+    h+=`<p class="sent" style="line-height:1.5">${esc(it.q.p)}</p><div class="arrow">Vilken mening betyder samma sak?</div><div class="opts">`+
+      it.q.o.map((o,i)=>{let c="";if(lg.done&&i===it.q.r)c=" right";else if((lg.picked||[]).includes(i))c=" wrong";
+        return `<button class="opt${c}" data-o="${i}"${lg.done?" disabled":""}><span class="l">${"abc"[i]})</span>${esc(o)}</button>`;}).join("")+`</div></div></div>
+      <div class="actions"><button class="btn primary" id="nextBtn"${lg.done?"":" hidden"}>Nästa →</button></div>`;
+  } else if(it.type==="match"){
+    const vals=lg.val||[];
+    h+=`<div class="match">`+it.m.left.map((l,i)=>{
+      const v=vals[i]??"";const cls=lg.checked?(String(v)===String(it.m.key[i])?"ok":(v===""?"":"no")):"";
+      return `<div class="mrow"><span>${i+1}. ${esc(l)} …</span><select data-m="${i}" class="${cls}"${lg.done?" disabled":""}><option value="">Välj slut …</option>`+
+        it.m.right.map((r,j)=>`<option value="${j}"${String(v)===String(j)?" selected":""}>${"abcdefghi"[j]}) ${esc(r)}</option>`).join("")+`</select></div>`;}).join("")+
+      `</div></div></div><div class="actions"><button class="btn primary" id="checkBtn"${lg.done?" hidden":""}>Kontrollera</button>
+      <button class="btn quiet" id="showBtn"${lg.done?" hidden":""}>Visa svar</button>
+      <button class="btn primary" id="nextBtn"${lg.done?"":" hidden"}>Nästa →</button></div>`;
+  }
+  h+=`<div class="feedback" id="fb"></div></section>`;
+  return h;
+}
+function gapHtml(it,bi,done){
+  const b=it.blanks[bi], lg=L(it.key);
+  let v=lg.val[bi]??""; if(it.example) v=b.alts[0].slice(b.pre.length);
+  const cls=done?"ok":(lg.bad&&lg.bad[bi]?"no":"");
+  return `<span class="gap">${b.pre?`<span class="pre">${esc(b.pre)}</span>`:""}<input data-b="${bi}" class="${cls}" value="${esc(v)}" ${done?"disabled":""} autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Lucka ${bi+1}"></span>`;
+}
+
+function renderDots(){
+  let exid=curEx(), n, i, lab;
+  if(!exid){ // ordlista, ett i taget
+    const s=+state.tab; n=WORDS[s].length; i=state.idx["a"+s]||0;
+    $("#dots").innerHTML=WORDS[s].map((w,j)=>`<button class="dot" data-d="${j}" aria-current="${j===i}">${j+1}</button>`).join("");
+  } else {
+    const items=EX[exid].items; n=items.length; i=idx(exid);
+    $("#dots").innerHTML=items.map((it,j)=>`<button class="dot${(L(it.key).done||it.example)?" done":""}" data-d="${j}" aria-current="${j===i}">${it.label}</button>`).join("");
+  }
+  $("#prev").disabled=i<=0; $("#next").disabled=i>=n-1;
+}
+function go(d,abs){
+  const exid=curEx();
+  if(!exid){const s=+state.tab,k="a"+s,n=WORDS[s].length;let i=abs!=null?abs:(state.idx[k]||0)+d;state.idx[k]=Math.max(0,Math.min(n-1,i));}
+  else {const n=EX[exid].items.length;let i=abs!=null?abs:idx(exid)+d;state.idx[exid]=Math.max(0,Math.min(n-1,i));}
+  save();render();focusFirst();
+}
+function focusFirst(){ if(matchMedia("(pointer:fine)").matches){const inp=document.querySelector("#item input:not(:disabled)");if(inp)inp.focus();} }
+
+/* ---------- ordlista ---------- */
+function renderList(s){
+  let h=`<p class="instr">Läs förklaringen och exemplet. Vill du komma ihåg ordet kan du skriva en egen anteckning i rutan – en förklaring med egna ord, en synonym eller en översättning. Skriv på det språk du vill. Det är frivilligt.</p>
+   <div class="abar"><div class="subnav" style="margin:0"><button data-av="grid" aria-pressed="${state.aview==="grid"}">Alla ord</button><button data-av="one" aria-pressed="${state.aview==="one"}">Ett i taget</button></div>
+   <label class="toggle"><input type="checkbox" id="hideExp"${state.hideExp?" checked":""}> Dölj förklaringarna (testa dig själv)</label></div>`;
+  const card=(w,big)=>`<div class="card${big?" big":""}" data-lemma="${esc(w[0])}"><h3>${esc(w[0])}</h3>
+    <div class="gram">${esc(w[1])}<span class="pos">${POS[w[2]]}</span></div>
+    <button class="reveal">Vad betyder ordet? Tryck för att se.</button>
+    <div class="exp">${esc(w[3])}</div><div class="ex">${esc(w[4])}</div>
+    <input data-tr="${esc(w[0])}" placeholder="Egen anteckning (frivilligt) …" value="${esc(state.tr[w[0]]||"")}" autocomplete="off"></div>`;
+  if(state.aview==="grid") h+=`<div class="cards${state.hideExp?" hideexp":""}" id="cards">`+WORDS[s].map(w=>card(w)).join("")+`</div>`;
+  else { const i=state.idx["a"+s]||0; h+=`<div class="${state.hideExp?"hideexp":""}" id="cards">${card(WORDS[s][i],true)}</div>`; }
+  return h;
+}
+function bindList(){
+  document.querySelectorAll("[data-tr]").forEach(inp=>{
+    inp.addEventListener("input",()=>{const v=inp.value.trim();if(v)state.tr[inp.dataset.tr]=v;else delete state.tr[inp.dataset.tr];save();});
+    inp.addEventListener("change",()=>track("ord"+state.tab,"översättning",inp.dataset.tr+" = "+inp.value.trim()));
+  });
+  document.querySelectorAll(".reveal").forEach(b=>b.addEventListener("click",()=>b.closest(".card").classList.add("open")));
+  $("#hideExp").addEventListener("change",e=>{state.hideExp=e.target.checked;save();render();});
+}
+
+/* ---------- loggning till lärarens ark ---------- */
+const HAS_GAS = typeof google!=="undefined" && google.script && google.script.run;
+let who={email:"",name:"",klass:""}, fallbackWho=null, queue=[], sending=false, flushTimer=null;
+try{fallbackWho=JSON.parse(localStorage.getItem(KEY+"-who")||"null");}catch(e){}
+try{queue=JSON.parse(localStorage.getItem(KEY+"-queue")||"[]");}catch(e){queue=[];}
+function saveQueue(){try{localStorage.setItem(KEY+"-queue",JSON.stringify(queue));}catch(e){}}
+function exOfKey(key){const e=key.replace(/-\d+$/,"");return EX[e]?e:key;}
+function itemByKey(key){const exid=exOfKey(key);const ex=EX[exid];if(!ex)return null;return ex.items[+key.split("-").pop()];}
+function rightText(it){
+  if(!it) return "";
+  if(it.type==="fill") return it.blanks.map(b=>b.alts[0]).join(" / ");
+  if(it.type==="mc") return it.q.o[it.q.r];
+  if(it.type==="match") return it.m.key.map((k,i)=>`${i+1}${"abcdefghi"[k]}`).join(" ");
+  return "";
+}
+function track(key,ev,val,tries){
+  const it=itemByKey(key), exid=exOfKey(key);
+  const exLabel=EX[exid]?exName(exid):/^ord\d+$/.test(key)?`Ord ${key.slice(3)} · ${key.slice(3)}a`:exid;
+  queue.push({k:key,ex:exLabel,n:it?String(it.label):"",ev,v:val==null?"":String(val),r:rightText(it),f:tries||"",c:new Date().toISOString()});
+  saveQueue(); clearTimeout(flushTimer); flushTimer=setTimeout(flush,1500);
+}
+function setSync(t,err){const s=$("#sync");if(s){s.textContent=t;s.className="sync"+(err?" err":"");}}
+function flush(){
+  if(!HAS_GAS||sending||!queue.length) return;
+  if(!who.email && !fallbackWho) return;
+  sending=true; const batch=queue.slice(0,100); setSync("sparar …");
+  google.script.run
+    .withSuccessHandler(()=>{sending=false;queue.splice(0,batch.length);saveQueue();setSync("✓ sparat");if(queue.length)flush();})
+    .withFailureHandler(()=>{sending=false;setSync("inte sparat än – försöker igen",true);clearTimeout(flushTimer);flushTimer=setTimeout(flush,15000);})
+    .logEvents(batch, fallbackWho);
+}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flush();});
+function showWho(){
+  const n=who.name||(fallbackWho&&fallbackWho.name)||who.email;
+  $("#who").innerHTML=n?`👤 ${esc(n)}<span class="sync" id="sync"></span>`:"";
+}
+function askWho(){
+  $("#whoModal").hidden=false; $("#whoName").focus();
+  $("#whoOk").onclick=()=>{
+    const n=$("#whoName").value.trim(), k=$("#whoClass").value.trim();
+    if(n.split(" ").filter(Boolean).length<2){$("#whoName").focus();$("#whoName").placeholder="Skriv både för- och efternamn";$("#whoName").value=n;return;}
+    fallbackWho={name:n,klass:k}; try{localStorage.setItem(KEY+"-who",JSON.stringify(fallbackWho));}catch(e){}
+    $("#whoModal").hidden=true; showWho(); flush();
+  };
+}
+function boot(info){
+  who=info||who;
+  if(info&&info.progress){
+    const p=info.progress;
+    for(const k of p.done){const lg=L(k);lg.done=true;}
+    for(const k of p.shown){L(k).shown=true;}
+    for(const [w,t] of Object.entries(p.tr||{})) if(!state.tr[w]) state.tr[w]=t;
+    save(); render();
+  }
+  if(!who.email && !fallbackWho) askWho();
+  showWho(); flush();
+}
+const CATALOG=Object.keys(EX).map(e=>[e,exName(e),EX[e].items.filter(i=>!i.example).length]);
+if(HAS_GAS){ google.script.run.withSuccessHandler(boot).withFailureHandler(()=>{boot(null);}).getBoot(SET.id,SET.title,CATALOG); }
+
+/* ---------- kontroll ---------- */
+function fb(kind,html){const f=$("#fb");f.className="feedback show "+kind;f.innerHTML=html;}
+function candidates(b,v){const n=norm(v);const out=[n];if(b.pre){const p=norm(b.pre);if(!n.startsWith(p))out.push(p+n);else out.push(n);out.push(p+n);}return out;}
+function blankRight(b,v){const alts=b.alts.map(norm);return candidates(b,v).some(c=>alts.includes(c));}
+function diagnose(it,b,v){
+  const n=norm(v); if(!n) return "empty";
+  const alts=b.alts.map(norm);
+  if(!it.test){const w=lookup(b.alts[0]),g=FORMS[n];if(w&&g&&g.lemma===w.lemma&&!n.includes(" ")&&!alts.some(a=>a.startsWith(n+" ")))return "form:"+w.pos;}
+  for(const c of candidates(b,v)) for(const a of alts){
+    if(a.startsWith(c+" ")) return "missing";
+    if(a.length>3 && lev(c,a)<=(a.length>6?2:1)) return "typo";
+  }
+  if(!it.test){
+    const want=lookup(b.alts[0]), got=lookup(n);
+    if(want&&got&&got.lemma===want.lemma) return "form:"+want.pos;
+    if(got&&got.s===want?.s) return "other";
+  }
+  return "wrong";
+}
+const MSG={
+  empty:"Skriv något i luckan först.",
+  missing:"Du är på rätt väg, men det saknas ett ord.",
+  typo:"Nästan! Kontrollera stavningen.",
+  "form:verb":"Rätt ord, men fel form. Vilket tempus behövs – presens, preteritum, supinum eller infinitiv?",
+  "form:subst":"Rätt ord, men fel form. Behövs obestämd eller bestämd form? Singular eller plural?",
+  "form:adj":"Rätt ord, men fel form. Tänk på om det gäller ett en-ord, ett ett-ord eller plural.",
+  "form:adv":"Rätt ord, men fel form.",
+  other:"Det ordet finns i rutan, men det passar inte här. Läs meningen en gång till.",
+  wrong:"Inte riktigt. Prova igen – eller tryck på Ledtråd."
+};
+function check(it){
+  const lg=L(it.key); const inputs=[...document.querySelectorAll("#item input[data-b]")];
+  lg.val=inputs.map(i=>i.value); lg.bad=[];
+  let allOk=true, msgs=[];
+  inputs.forEach((inp,i)=>{
+    const b=it.blanks[i];
+    if(blankRight(b,inp.value)){inp.classList.add("ok");inp.classList.remove("no");lg.bad[i]=false;}
+    else{allOk=false;lg.bad[i]=true;inp.classList.add("no");const d=diagnose(it,b,inp.value);msgs.push(d);}
+  });
+  if(msgs.includes("empty")&&msgs.every(m=>m==="empty")){fb("info",MSG.empty);save();return;}
+  lg.tries++;
+  if(allOk){
+    lg.done=true; save(); track(it.key,"rätt",it.blanks.map((b,i)=>b.pre+(lg.val[i]||"")).join(" / "),lg.tries);
+    fb("ok",lg.tries===1?"Rätt!":"Rätt! Bra att du inte gav upp.");
+    finishUI();
+  } else {
+    const wrongVals=inputs.filter((_,i)=>lg.bad[i]).map(i=>i.value.trim()).filter(Boolean);
+    if(wrongVals.length) lg.wrong.push(wrongVals.join(" / "));
+    const d=msgs.find(m=>m!=="empty")||"wrong";
+    track(it.key,"fel",inputs.map((inp,i)=>lg.bad[i]?it.blanks[i].pre+inp.value.trim():null).filter(x=>x!==null&&x!=="").join(" / "),lg.tries);
+    let msg=MSG[d]; if(inputs.length>1 && inputs.some((_,i)=>!lg.bad[i])) msg="En av luckorna är rätt. "+msg;
+    fb("warn",msg); save();
+  }
+}
+function finishUI(){
+  document.querySelectorAll("#item input").forEach(i=>{i.disabled=true;i.classList.add("ok");i.classList.remove("no");});
+  ["checkBtn","hintBtn","showBtn"].forEach(id=>{const b=document.getElementById(id);if(b)b.hidden=true;});
+  $("#nextBtn").hidden=false; $("#item").classList.add("done"); $("#nextBtn").focus({preventScroll:true});
+  renderDots(); const bank=$("#bank"); if(bank){const s=+state.tab;const tmp=document.createElement("div");tmp.innerHTML=bankHtml(s,curEx());bank.querySelector(".chips").innerHTML=tmp.querySelector(".chips").innerHTML;bindChips();}
+}
+function hint(it){
+  const lg=L(it.key); lg.hints=(lg.hints||0)+1; save(); track(it.key,"ledtråd "+lg.hints,"",lg.tries);
+  const bi=Math.max(0,(lg.bad||[]).findIndex(x=>x)); const b=it.blanks[bi]; const ans=b.alts[0];
+  const who=it.blanks.length>1?` (lucka ${bi+1})`:"";
+  if(it.test){
+    const rest=ans.slice(b.pre.length);
+    if(lg.hints===1) fb("info",`Ordet${who} har ${ans.replace(/ /g,"").length} bokstäver.`);
+    else fb("info",`Ordet${who} börjar så här: <b>${esc(ans.slice(0,b.pre.length+Math.min(3,Math.ceil(rest.length/2))))}…</b>`);
+    return;
+  }
+  const f=lookup(ans);
+  if(lg.hints===1) fb("info",`Det är ett ${POS[f.pos]}${who} som börjar på <b>${esc(ans[0].toUpperCase())}</b>.`);
+  else fb("info",`Grundformen är <b>${esc(f.lemma)}</b>${who}. Vilken form passar i meningen?`);
+}
+function showAns(it){
+  const lg=L(it.key); lg.shown=true; lg.done=true; track(it.key,"visade svaret","",lg.tries);
+  if(it.type==="fill"){ lg.val=it.blanks.map(b=>b.alts[0].slice(b.pre.length)); document.querySelectorAll("#item input[data-b]").forEach((inp,i)=>inp.value=lg.val[i]); fb("info","Här är svaret. Läs meningen högt och gå sedan vidare."); }
+  if(it.type==="match"){ lg.val=it.m.key.slice(); lg.checked=true; save(); render(); fb("info","Här är svaren."); return; }
+  save(); finishUI();
+}
+
+/* ---------- händelser ---------- */
+let activeInput=null;
+function bindChips(){
+  document.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{
+    const inp=(activeInput&&document.body.contains(activeInput)&&!activeInput.disabled)?activeInput:document.querySelector("#item input:not(:disabled)");
+    if(!inp)return; inp.value=c.dataset.w; inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length);
+  }));
+}
+function bindItem(it){
+  bindChips();
+  const bank=$("#bank"); if(bank) bank.addEventListener("toggle",()=>{state.bankClosed=!bank.open;save();});
+  document.querySelectorAll("#item input[data-b]").forEach(inp=>{
+    inp.addEventListener("focus",()=>activeInput=inp);
+    inp.addEventListener("input",()=>{inp.classList.remove("no");const lg=L(it.key);lg.val[+inp.dataset.b]=inp.value;save();});
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();check(it);}});
+  });
+  const on=(id,f)=>{const b=document.getElementById(id);if(b)b.addEventListener("click",f);};
+  on("checkBtn",()=>it.type==="match"?checkMatch(it):check(it));
+  on("hintBtn",()=>hint(it)); on("showBtn",()=>showAns(it)); on("nextBtn",()=>go(1));
+  if(it.type==="mc") document.querySelectorAll(".opt").forEach(b=>b.addEventListener("click",()=>{
+    const lg=L(it.key),o=+b.dataset.o; lg.tries++;
+    track(it.key,o===it.q.r?"rätt":"fel",it.q.o[o],lg.tries);if(o===it.q.r){lg.done=true;b.classList.add("right");document.querySelectorAll(".opt").forEach(x=>x.disabled=true);fb("ok","Rätt!");$("#nextBtn").hidden=false;$("#item").classList.add("done");renderDots();}
+    else{lg.picked=(lg.picked||[]).concat(o);lg.wrong.push(it.q.o[o]);b.classList.add("wrong");fb("warn","Nej, det betyder något annat. Prova ett annat alternativ.");}
+    save();
+  }));
+  if(it.type==="match") document.querySelectorAll("select[data-m]").forEach(sel=>sel.addEventListener("change",()=>{const lg=L(it.key);lg.val[+sel.dataset.m]=sel.value;sel.classList.remove("ok","no");save();}));
+}
+function checkMatch(it){
+  const lg=L(it.key); lg.tries++; lg.checked=true; let ok=0,empty=0;
+  document.querySelectorAll("select[data-m]").forEach(sel=>{const i=+sel.dataset.m;
+    if(sel.value===""){empty++;sel.classList.remove("ok","no");return;}
+    if(+sel.value===it.m.key[i]){ok++;sel.classList.add("ok");sel.classList.remove("no");}
+    else{sel.classList.add("no");sel.classList.remove("ok");lg.wrong.push(`${it.m.left[i]} ${it.m.right[+sel.value]}`);}
+  });
+  track(it.key,ok===it.m.left.length?"rätt":"fel",`${ok} av ${it.m.left.length} rätt: `+[...document.querySelectorAll("select[data-m]")].map((s,i)=>`${i+1}${s.value===""?"–":"abcdefghi"[+s.value]}`).join(" "),lg.tries);
+  if(ok===it.m.left.length){lg.done=true;save();fb("ok","Alla är rätt!");document.querySelectorAll("select[data-m]").forEach(s=>s.disabled=true);
+    $("#checkBtn").hidden=true;$("#showBtn").hidden=true;$("#nextBtn").hidden=false;$("#item").classList.add("done");renderDots();}
+  else {save();fb("warn",`${ok} av ${it.m.left.length} stämmer. Ändra de röda${empty?" och fyll i de tomma":""}.`);}
+}
+
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-tab],[data-sub],[data-d],[data-av]"); if(!t)return;
+  if(t.dataset.tab){state.tab=t.dataset.tab;save();render();focusFirst();}
+  else if(t.dataset.sub){ if(state.tab==="t")state.sub.t=t.dataset.sub; else state.sub[state.tab]=t.dataset.sub; save();render();focusFirst(); }
+  else if(t.dataset.av){state.aview=t.dataset.av;save();render();}
+  else if(t.dataset.d!=null) go(0,+t.dataset.d);
+});
+$("#prev").addEventListener("click",()=>go(-1));
+$("#next").addEventListener("click",()=>go(1));
+document.addEventListener("keydown",e=>{
+  if(!$("#sumModal").hidden){if(e.key==="Escape")closeSum();return;}
+  const tag=(e.target.tagName||"").toLowerCase(); if(tag==="input"||tag==="select"||tag==="textarea") return;
+  if(e.key==="ArrowRight"){go(1);e.preventDefault();}
+  else if(e.key==="ArrowLeft"){go(-1);e.preventDefault();}
+  else if(e.key==="f"||e.key==="F"){toggleFs();}
+  else if(e.key===" " && state.sub[state.tab]==="a" && state.tab!=="t"){const c=document.querySelector(".card");if(c){c.classList.add("open");e.preventDefault();}}
+});
+function toggleFs(){if(!document.fullscreenElement)document.documentElement.requestFullscreen?.().catch(()=>{});else document.exitFullscreen?.();}
+if(!document.fullscreenEnabled) $("#fsBtn").hidden=true;
+$("#fsBtn").addEventListener("click",toggleFs);
+$("#themeBtn").addEventListener("click",()=>{
+  const r=document.documentElement,cur=r.getAttribute("data-theme");
+  const dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  r.setAttribute("data-theme",dark?"light":"dark"); try{localStorage.setItem(KEY+"-theme",dark?"light":"dark");}catch(e){}
+});
+try{const th=localStorage.getItem(KEY+"-theme");if(th)document.documentElement.setAttribute("data-theme",th);}catch(e){}
+$("#clearBtn").addEventListener("click",()=>{
+  const exid=curEx();
+  if(!exid){ if(confirm("Töm dina anteckningar i den här ordlistan?")){for(const w of WORDS[+state.tab])delete state.tr[w[0]];save();render();} return; }
+  if(!confirm("Töm alla svar i den här övningen?"))return;
+  for(const it of EX[exid].items) delete state.log[it.key]; state.idx[exid]=0; save(); track(exid,"rensade övningen",""); render();
+});
+
+/* ---------- sammanfattning ---------- */
+function sentenceWith(it,vals){
+  if(it.type!=="fill") return "";
+  if(it.pair){const p=it.pair;return p.leftGap?`<b>${esc(vals[0])}</b> → ${esc(p.right)}`:`${esc(p.left)} → ${esc(p.right.replace("___",""))}<b>${esc(vals[0])}</b>`;}
+  return it.parts.map(p=>p.gap?`<b>${esc(p.pre+ (vals[p.bi]||"").slice(0))}</b>`:esc(p.t)).join("");
+}
+function exName(exid){ const m=exid.match(/^s(\d+)([bc])$/); if(m) return `Ord ${m[1]} · ${m[1]}${m[2]}`; return `Test ${SET.label} · `+(EX[exid]?EX[exid].t.short:exid); }
+function gotoEx(exid){ const m=exid.match(/^s(\d+)([bc])$/); if(m){state.tab=m[1];state.sub[m[1]]=m[2];} else {state.tab="t";state.sub.t=exid.split("-").slice(1).join("-");} }
+function openSum(){
+  let h=`<h3>Så långt har du kommit</h3><div class="prog">`;
+  for(const exid of Object.keys(EX)){
+    const items=EX[exid].items.filter(i=>!i.example); const d=items.filter(i=>L(i.key).done).length;
+    h+=`<div style="display:block"><div style="display:flex;justify-content:space-between"><span>${exName(exid)}</span><span>${d}/${items.length}</span></div><div class="bar"><i style="width:${Math.round(100*d/items.length)}%"></i></div></div>`;
+  }
+  h+=`</div>`;
+  // ord att öva på
+  const hard=new Map();
+  for(const exid of Object.keys(EX)) for(const it of EX[exid].items){const lg=state.log[it.key];if(!lg)continue;
+    if((lg.wrong.length||lg.shown) && it.type==="fill") for(const b of it.blanks){const f=lookup(b.alts[0]);hard.set(f?f.lemma:b.alts[0],true);} }
+  h+=`<h3>Ord som du behöver öva mer på</h3>`+(hard.size?[...hard.keys()].map(w=>`<span class="pill">${esc(w)}</span>`).join(""):`<p class="empty">Inga ännu.</p>`);
+  // fel
+  h+=`<h3>Mina svar som inte blev rätt direkt</h3>`; let any=false;
+  for(const exid of Object.keys(EX)) EX[exid].items.forEach((it,j)=>{const lg=state.log[it.key];if(!lg||(!lg.wrong.length&&!lg.shown))return;any=true;
+    const right=it.type==="fill"?sentenceWith(it,it.blanks.map(b=>b.alts[0].slice(b.pre.length))):it.type==="mc"?esc(it.q.p)+" = <b>"+esc(it.q.o[it.q.r])+"</b>":"Para ihop 1–9";
+    h+=`<div class="again"><div class="top"><span>${exName(exid)} · uppgift ${it.label}</span><button class="go" data-goto="${exid}|${j}">Gå till uppgiften</button></div>
+      ${lg.wrong.length?`<div class="mine">Du skrev: ${lg.wrong.slice(-3).map(esc).join(" · ")}</div>`:""}${lg.shown?`<div class="mine">Du tittade på svaret.</div>`:""}
+      <div class="right">Rätt: ${right}</div></div>`;});
+  if(!any) h+=`<p class="empty">Inga ännu.</p>`;
+  // ordlista
+  const trs=Object.entries(state.tr);
+  h+=`<h3>Mina anteckningar</h3>`+(trs.length?`<div class="gl">`+trs.map(([w,t])=>`<b>${esc(w)}</b><span>${esc(t)}</span>`).join("")+`</div>`:`<p class="empty">Du har inte skrivit några anteckningar ännu.</p>`);
+  h+=`<div class="actions"><button class="btn quiet" id="resetAll">Nollställ allt jag har gjort</button></div>`;
+  $("#sumBody").innerHTML=h; $("#sumModal").hidden=false;
+  $("#resetAll").addEventListener("click",()=>{if(confirm("Börja om från början? Dina svar raderas här, men din lärare kan fortfarande se vad du har gjort.")){state.log={};state.tr={};state.idx={};save();track("alla","nollställde allt","");closeSum();render();}});
+  document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>{
+    const [exid,j]=b.dataset.goto.split("|");
+    gotoEx(exid);
+    state.idx[exid]=+j; save(); closeSum(); render(); focusFirst();
+  }));
+}
+function closeSum(){$("#sumModal").hidden=true;}
+$("#sumBtn").addEventListener("click",openSum);
+$("#sumClose").addEventListener("click",closeSum);
+$("#sumModal").addEventListener("click",e=>{if(e.target.id==="sumModal")closeSum();});
+
+render(); showWho();
+</script>
+</body>
+</html>
